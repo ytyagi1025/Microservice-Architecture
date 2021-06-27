@@ -14,31 +14,32 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
 import com.netflix.appinfo.InstanceInfo;
-
+import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
 
 @RestController
 public class AppController {
 
 	@Autowired
 	Utility utility;
-	
+
 	@Autowired
 	DiscoveryClient discoveryClient;
-	
+
 	@GetMapping("getEmp/{id}/{techId}")
+	@HystrixCommand(fallbackMethod = "recovery")
 	public ResponseEntity getEmployee(@PathVariable int id, @PathVariable int techId) {
-		Employee emp=utility.getEmployee(id);
-		List<ServiceInstance> list=discoveryClient.getInstances("TECHNOLOGY");
-		ServiceInstance instance=list.get(0);
-		URI uri=instance.getUri();
-		
-		
-		try {
-			Technology tech=new RestTemplate().getForObject(uri+"/getTech/"+techId, Technology.class);
+		Employee emp = utility.getEmployee(id);
+		List<ServiceInstance> list = discoveryClient.getInstances("TECHNOLOGY");
+		ServiceInstance instance = list.get(0);
+		URI uri = instance.getUri();
+
+		Technology tech = new RestTemplate().getForObject(uri + "/getTech/" + techId, Technology.class);
 		emp.setTechnology(tech);
-		return new ResponseEntity(emp,HttpStatus.OK);
-		}catch(Exception e) {
-			return new ResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR);
-		}
+		return new ResponseEntity(emp, HttpStatus.OK);
+
+	}
+
+	public ResponseEntity recovery(@PathVariable int id, @PathVariable int techId) {
+		return new ResponseEntity("Please try again after sometime", HttpStatus.OK);
 	}
 }
